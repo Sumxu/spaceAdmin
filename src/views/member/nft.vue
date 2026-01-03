@@ -67,11 +67,14 @@ const pageData: any = reactive({
         prop: "address",
         width:"400px"
       },
+       {
+        label: "NFTID",
+        prop: "tokenId"
+      },
       {
         label: "权重",
         prop: "nftWeight"
       },
-      { label: "操作", fixed: "right", slot: "operation", minWidth: "240px" }
     ],
     list: [],
     oldList: [],
@@ -105,13 +108,12 @@ const _loadData = async () => {
   pageData.tableParams.loading = true;
   try {
     const nftTotal = await getNftTotal();
+    console.log("nftTotal000",nftTotal)
     if (nftTotal == 0n) return;
     //得到nft拥有对应的地址
     const nftAddressList = await getNftAddressByIndex(nftTotal);
-    // console.log("nftAddressList===",nftAddressList)
     //得到nft地址拥有的权重
     const nftWeight = await getNftWeightByIndex(nftTotal);
-    console.log("nftWeight===",nftWeight)
  
     await getListData(nftTotal, nftAddressList.data, nftWeight.data);
     pageData.tableParams.loading = false;
@@ -130,6 +132,7 @@ const getListData = (nftTotal, nftAddressList, nftWeightList) => {
   }
   pageData.tableParams.list = tableList
   pageData.tableParams.oldList = tableList
+  console.log(" pageData.tableParams.list==", pageData.tableParams.list)
 };
 // 修改权重
 const handleUpdateNftWeight = (row: any) => {

@@ -46,37 +46,21 @@ const pageData: any = reactive({
       placeholder: "请输入上级地址",
       width: "370"
     },
-    {
-      type: "select",
-      label: "用户等级",
-      prop: "level",
-      placeholder: "请选择用户等级",
-      dataSourceKey: "userLevelOptions",
-      options: {
-        filterable: true,
-        keys: {
-          prop: "value",
-          value: "value",
-          label: "label"
-        }
-      }
-    },
-    {
-      type: "radio",
-      label: "是否为节点",
-      prop: "isNode",
-      default: false,
-      dataSourceKey: "isNodeTypeOptions",
-      options: {
-        filterable: true,
-        keys: {
-          prop: "prop",
-          value: "value",
-          label: "label"
-        }
-      }
-    }
-
+    // {
+    //   type: "select",
+    //   label: "用户等级",
+    //   prop: "level",
+    //   placeholder: "请选择用户等级",
+    //   dataSourceKey: "userLevelOptions",
+    //   options: {
+    //     filterable: true,
+    //     keys: {
+    //       prop: "value",
+    //       value: "value",
+    //       label: "label"
+    //     }
+    //   }
+    // }
   ],
   dataSource: {
     userLevelOptions: userLevelOptions,
@@ -111,11 +95,11 @@ const pageData: any = reactive({
       },
       { label: "团队人数", prop: "teamCount", minWidth: "120px" },
       { label: "直推人数", prop: "directCount", minWidth: "120px" },
-      { label: "小区业绩", prop: "directPerf", minWidth: "120px", slot: "directPerfScope" },
+      { label: "直推业绩", prop: "directPerf", minWidth: "120px", slot: "directPerfScope" },
       { label: "团队业绩", prop: "teamPerf", minWidth: "120px", slot: "teamPerfScope" },
       { label: "用户投入", prop: "myPerf", minWidth: "120px", slot: "myPerfScope" },
-      { label: "等级", prop: "level", minWidth: "120px", slot: 'levelScope' },
-      { label: "是否为节点", prop: "isNode", minWidth: "120px", slot: 'nodeScope' },
+      // { label: "等级", prop: "level", minWidth: "120px", slot: 'levelScope' },
+      // { label: "是否为节点", prop: "isNode", minWidth: "120px", slot: 'nodeScope' },
       { label: "权重", prop: "weight", minWidth: "120px" },
       { label: "创建时间", prop: "createTime", width: "180px" }
     ],
