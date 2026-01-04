@@ -8,3 +8,7 @@ import { type Result, post, put ,get} from "../base";
 export function queryPage<T>(data?: any): Promise<Result<T>> {
   return post("/nft/page", data);
 }
+
+export function exportXlsx<T>(data?: any): Promise<Result<T>> {
+  return post("/nft/export", data);
+}

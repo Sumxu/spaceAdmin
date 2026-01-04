@@ -27,7 +27,10 @@ export const MenuTypeMap: SelectOptionMap<string> = {
   1: "菜单",
   2: "权限"
 };
-
+export const nodeTypeMap:SelectOptionMap<string> = {
+  1: "太空",
+  2: "生态"
+};
 /**
  * 状态
  */

@@ -16,7 +16,6 @@ export function useNFTMulticall() {
     try {
       // v6 provider
       const provider = new ethers.BrowserProvider((window as any).ethereum);
-
       // MultiCall 合约
       const multicallContract = new ethers.Contract(
         contractAddress.multiCallToken,

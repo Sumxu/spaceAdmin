@@ -77,3 +77,7 @@ export function rewardTypeConvert(value:number):string{
 export function awardMapConvert(value:number):string{
   return constants.awardMap[value];
 }
+
+export function nodeTypeMapConvert(value:number):string{
+  return constants.nodeTypeMap[value];
+}

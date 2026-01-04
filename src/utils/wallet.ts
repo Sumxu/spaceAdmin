@@ -1,5 +1,7 @@
 import { ethers } from "ethers";
 import { ElNotification } from "element-plus";
+const BSC_CHAIN_ID = 56; // 十进制
+const BSC_CHAIN_ID_HEX = "0x38";
 /**
  * 格式化钱包地址
  * @param addr 钱包地址
@@ -77,23 +79,73 @@ export async function callContractMethod(
   args: any[] = [],
   write: boolean = false
 ): Promise<any> {
-  const accounts = await window.ethereum.request({
+  const ethereum = (window as any).ethereum;
+
+  if (!ethereum) {
+    throw new Error("请先安装 MetaMask");
+  }
+
+  // 1️⃣ 请求账户
+  const accounts: string[] = await ethereum.request({
     method: "eth_requestAccounts"
   });
+
   if (!accounts || accounts.length === 0) {
-    console.warn("未检测到账户，请在 MetaMask 中登录");
-    return;
+    throw new Error("未检测到账户，请在 MetaMask 中登录");
   }
-  const provider = new ethers.BrowserProvider(window.ethereum);
+
+  // 2️⃣ 检查并切换到 BSC 主网
+  const currentChainId = await ethereum.request({
+    method: "eth_chainId"
+  });
+
+  if (currentChainId !== BSC_CHAIN_ID_HEX) {
+    try {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: BSC_CHAIN_ID_HEX }]
+      });
+    } catch (switchError: any) {
+      // BSC 未添加
+      if (switchError.code === 4902) {
+        await ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: BSC_CHAIN_ID_HEX,
+              chainName: "Binance Smart Chain Mainnet",
+              nativeCurrency: {
+                name: "BNB",
+                symbol: "BNB",
+                decimals: 18
+              },
+              rpcUrls: ["https://bsc-dataseed.binance.org/"],
+              blockExplorerUrls: ["https://bscscan.com"]
+            }
+          ]
+        });
+      } else {
+        throw switchError;
+      }
+    }
+  }
+
+  // 3️⃣ ethers v6 Provider
+  const provider = new ethers.BrowserProvider(ethereum);
+
+  // 4️⃣ 创建合约实例
   const contract = write
     ? new ethers.Contract(address, abi, await provider.getSigner())
     : new ethers.Contract(address, abi, provider);
 
+  // 5️⃣ 调用合约方法
   const result = await (contract as any)[method](...args);
-  // 如果是写操作，返回 tx.wait() 结果
+
+  // 6️⃣ 写操作等待交易确认
   if (write) {
-    return await result.wait?.();
+    return await result.wait();
   }
+
   return result;
 }
 /*
@@ -207,7 +259,4 @@ export async function PrivateKeyCallContractMethod(
 export function createWallet() {
   // 创建随机钱包
   const wallet = ethers.Wallet.createRandom();
-  console.log("Address:", wallet.address);
-  console.log("Private Key:", wallet.privateKey);
-  console.log("Mnemonic:", wallet.mnemonic.phrase);
 }

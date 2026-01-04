@@ -3,19 +3,17 @@ import { reactive, ref, onMounted, h } from "vue";
 import FormSearch from "@/components/opts/form-search.vue";
 import TableButtons from "@/components/opts/btns2.vue";
 import { PureTable } from "@pureadmin/table";
-import * as $Api from "@/api/member/user";
+import * as $Api from "@/api/member/nftBuy";
 import message from "@/utils/message";
 import { formatAddress, formatDate, fromWei, callContractMethod, toWei } from "@/utils/wallet";
 import { levelOptions, userLevelOptions, userTypeMap, userTypeOptions, isNodeTypeOptions, amountOptions, userSetLevelOptions, pledgeTypeOptions } from "@/constants/constants";
-import { userlevelConvert, levelConvert, userTypeConvert } from "@/constants/convert";
+import { userlevelConvert, levelConvert, userTypeConvert,nodeTypeMapConvert } from "@/constants/convert";
 import { ElMessageBox, ElSelect, ElOption, ElInput } from "element-plus";
 import { contractAddress } from "@/config/contract";
 import { saveExcelFile } from "@/utils/file";
 const pageData: any = reactive({
   searchState: true,
   searchForm: {},
-  amountType: "",//派送类型
-  amountNumber: "",//派送数量
   searchField: [
     {
       type: "input",
@@ -23,44 +21,7 @@ const pageData: any = reactive({
       prop: "address",
       placeholder: "请输入钱包地址",
       width: "370"
-    },
-    {
-      type: "radio",
-      label: "类型",
-      prop: "queryType",
-      default: 1,
-      dataSourceKey: "pledgeTypeOptions",
-      options: {
-        filterable: true,
-        keys: {
-          prop: "prop",
-          value: "value",
-          label: "label"
-        }
-      }
-    },
-    {
-      type: "input",
-      label: "上级地址",
-      prop: "parentAddress",
-      placeholder: "请输入上级地址",
-      width: "370"
-    },
-    // {
-    //   type: "select",
-    //   label: "用户等级",
-    //   prop: "level",
-    //   placeholder: "请选择用户等级",
-    //   dataSourceKey: "userLevelOptions",
-    //   options: {
-    //     filterable: true,
-    //     keys: {
-    //       prop: "value",
-    //       value: "value",
-    //       label: "label"
-    //     }
-    //   }
-    // }
+    }
   ],
   dataSource: {
     userLevelOptions: userLevelOptions,
@@ -88,20 +49,9 @@ const pageData: any = reactive({
         prop: "address",
         width: "370px"
       },
-      {
-        label: "上级地址",
-        prop: "parentAddress",
-        width: "370px"
-      },
-      { label: "团队人数", prop: "teamCount", minWidth: "120px" },
-      { label: "直推人数", prop: "directCount", minWidth: "120px" },
-      { label: "直推业绩", prop: "directPerf", minWidth: "120px", slot: "directPerfScope" },
-      { label: "团队业绩", prop: "teamPerf", minWidth: "120px", slot: "teamPerfScope" },
-      { label: "用户投入", prop: "myPerf", minWidth: "120px", slot: "myPerfScope" },
-      // { label: "等级", prop: "level", minWidth: "120px", slot: 'levelScope' },
-      // { label: "是否为节点", prop: "isNode", minWidth: "120px", slot: 'nodeScope' },
-      { label: "权重", prop: "weight", minWidth: "120px" },
-      { label: "创建时间", prop: "createTime", width: "180px" }
+      { label: "tokenId", prop: "tokenId" },
+      { label: "类型", prop: "nodeType" ,slot:"nodeTypeScope"},
+      { label: "购买时间", prop: "createTime"}
     ],
     list: [],
     loading: false,
@@ -188,7 +138,7 @@ const deriveXlsx = async () => {
   const query = getQueryParams();
   const res = await $Api.exportXlsx(query)
   if (res.success) {
-    saveExcelFile(res.data, "用户列表");
+    saveExcelFile(res.data, "NFT购买列表");
   }
 }
 onMounted(() => _loadData());
@@ -203,22 +153,9 @@ onMounted(() => _loadData());
     <pure-table :data="pageData.tableParams.list" :columns="pageData.tableParams.columns" row-key="address" border
       stripe :loading="pageData.tableParams.loading" :pagination="pageData.tableParams.pagination"
       @page-current-change="handleChangeCurrentPage" @page-size-change="handleChangePageSize">
-      <template #levelScope="scope">
-        <span>{{ userlevelConvert(scope.row[scope.column.property]) }}</span>
-      </template>
-      <template #nodeScope="scope">
-        <el-switch v-model="scope.row[scope.column.property]" disabled />
-      </template>
-      <template #directPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
-
-      </template>
-      <template #teamPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
-
-      </template>
-      <template #myPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
+     
+      <template #nodeTypeScope="scope">
+        <span>{{ nodeTypeMapConvert(scope.row[scope.column.property]) }}</span>
       </template>
     </pure-table>
   </el-card>

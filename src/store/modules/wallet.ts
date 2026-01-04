@@ -4,7 +4,8 @@ import { message } from "@/utils/message";
 import { ethers } from "ethers";
 
 const walletKey = "pure-wallet";
-
+const BSC_CHAIN_ID = 56; // 十进制
+const BSC_CHAIN_ID_HEX = "0x38";
 export interface WalletState {
   addressList: string[];
   currentAddress: string;
@@ -42,12 +43,16 @@ export const useWalletStore = defineStore("pure-wallet", {
 
     /** 连接钱包 */
     async connect() {
-      if (!(window as any).ethereum) {
+      const ethereum = (window as any).ethereum;
+
+      if (!ethereum) {
         message("请先安装 MetaMask!", { type: "error" });
         return "";
       }
+
       try {
-        const accounts = await window.ethereum.request({
+        // 1️⃣ 请求账户
+        const accounts: string[] = await ethereum.request({
           method: "eth_requestAccounts"
         });
 
@@ -56,17 +61,56 @@ export const useWalletStore = defineStore("pure-wallet", {
           return "";
         }
 
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const address = signer.address;
+        // 2️⃣ 检查当前链
+        const currentChainId = await ethereum.request({
+          method: "eth_chainId"
+        });
 
-        // 挂载到 window 全局
+        // 3️⃣ 如果不是 BSC 主网，切换
+        if (currentChainId !== BSC_CHAIN_ID_HEX) {
+          try {
+            await ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: BSC_CHAIN_ID_HEX }]
+            });
+          } catch (switchError: any) {
+            // 4️⃣ 如果 MetaMask 中没有该链，添加
+            if (switchError.code === 4902) {
+              await ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: BSC_CHAIN_ID_HEX,
+                    chainName: "Binance Smart Chain Mainnet",
+                    nativeCurrency: {
+                      name: "BNB",
+                      symbol: "BNB",
+                      decimals: 18
+                    },
+                    rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                    blockExplorerUrls: ["https://bscscan.com"]
+                  }
+                ]
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+
+        // 5️⃣ ethers v6 Provider
+        const provider = new ethers.BrowserProvider(ethereum);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+
+        // 6️⃣ 挂到全局（你原来的逻辑）
         window.provider = provider;
         window.signer = signer;
 
         if (!this.addressList.includes(address)) {
           this.addressList.push(address);
         }
+
         this.currentAddress = address;
         this.isConnected = true;
 
@@ -80,7 +124,6 @@ export const useWalletStore = defineStore("pure-wallet", {
         return "";
       }
     },
-
     /** 断开连接 */
     disconnect() {
       this.isConnected = false;
