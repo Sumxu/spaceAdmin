@@ -11,3 +11,6 @@ export function queryPage<T>(data?: any): Promise<Result<T>> {
 export function exportXlsx<T>(data?: any): Promise<Result<T>> {
   return post("/user/export", data);
 }
+export function queryNode<T>(data?: any): Promise<Result<T>> {
+  return get("/user/queryNode", data);
+}

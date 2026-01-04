@@ -153,7 +153,6 @@ onMounted(() => _loadData());
     <pure-table :data="pageData.tableParams.list" :columns="pageData.tableParams.columns" row-key="address" border
       stripe :loading="pageData.tableParams.loading" :pagination="pageData.tableParams.pagination"
       @page-current-change="handleChangeCurrentPage" @page-size-change="handleChangePageSize">
-     
       <template #nodeTypeScope="scope">
         <span>{{ nodeTypeMapConvert(scope.row[scope.column.property]) }}</span>
       </template>

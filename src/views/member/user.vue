@@ -45,22 +45,7 @@ const pageData: any = reactive({
       prop: "parentAddress",
       placeholder: "请输入上级地址",
       width: "370"
-    },
-    // {
-    //   type: "select",
-    //   label: "用户等级",
-    //   prop: "level",
-    //   placeholder: "请选择用户等级",
-    //   dataSourceKey: "userLevelOptions",
-    //   options: {
-    //     filterable: true,
-    //     keys: {
-    //       prop: "value",
-    //       value: "value",
-    //       label: "label"
-    //     }
-    //   }
-    // }
+    }
   ],
   dataSource: {
     userLevelOptions: userLevelOptions,
@@ -98,10 +83,14 @@ const pageData: any = reactive({
       { label: "直推业绩", prop: "directPerf", minWidth: "120px", slot: "directPerfScope" },
       { label: "团队业绩", prop: "teamPerf", minWidth: "120px", slot: "teamPerfScope" },
       { label: "用户投入", prop: "myPerf", minWidth: "120px", slot: "myPerfScope" },
-      // { label: "等级", prop: "level", minWidth: "120px", slot: 'levelScope' },
-      // { label: "是否为节点", prop: "isNode", minWidth: "120px", slot: 'nodeScope' },
       { label: "权重", prop: "weight", minWidth: "120px" },
-      { label: "创建时间", prop: "createTime", width: "180px" }
+      { label: "创建时间", prop: "createTime", width: "180px" },
+      {
+        label: "操作",
+        fixed: "right",
+        slot: "operation",
+        width: "120px"
+      }
     ],
     list: [],
     loading: false,
@@ -167,6 +156,64 @@ const handleChangeCurrentPage = (val: any) => {
   _loadData();
 };
 
+const handleCount = async (address: string) => {
+  const ecologyCount = ref<number>(0);
+  const spaceCount = ref<number>(0);
+  const loading = ref<boolean>(true);
+
+  // 先弹窗（显示 loading）
+  ElMessageBox({
+    title: "查询伞下节点数量",
+    message: () =>
+      h(
+        "div",
+        {
+          style:
+            "width: 300px; display: flex; flex-direction: column; gap: 16px;"
+        },
+        [
+          h(
+            "div",
+            { style: "display: flex; align-items: center; gap: 8px;" },
+            [
+              h("span", { style: "white-space: nowrap; font-weight: 500;" }, "太空节点"),
+              h(ElInput, {
+                modelValue: loading.value ? "加载中..." : spaceCount.value,
+                disabled: true
+              })
+            ]
+          ),
+          h(
+            "div",
+            { style: "display: flex; align-items: center; gap: 8px;" },
+            [
+              h("span", { style: "white-space: nowrap; font-weight: 500;" }, "生态节点"),
+              h(ElInput, {
+                modelValue: loading.value ? "加载中..." : ecologyCount.value,
+                disabled: true
+              })
+            ]
+          )
+        ]
+      ),
+    showCancelButton: false,
+    confirmButtonText: "关闭"
+  });
+
+  // 再请求接口
+  try {
+    console.log("address==",address)
+    const res: any = await $Api.queryNode({address:address});
+    if (res.code === 200) {
+      spaceCount.value = res.data.spaceCount ?? 0;
+      ecologyCount.value = res.data.ecologyCount ?? 0;
+    }
+  } catch (err) {
+    console.error("queryNode error:", err);
+  } finally {
+    loading.value = false;
+  }
+};
 // 按钮操作
 const btnClickHandle = (key: string) => {
   switch (key) {
@@ -219,6 +266,10 @@ onMounted(() => _loadData());
       </template>
       <template #myPerfScope="scope">
         <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
+      </template>
+
+      <template #operation="{ row }">
+        <el-link type="primary" @click="handleCount(row.address)">伞下节点数量</el-link>
       </template>
     </pure-table>
   </el-card>

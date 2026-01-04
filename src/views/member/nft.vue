@@ -3,70 +3,50 @@ import { reactive, ref, onMounted, h } from "vue";
 import FormSearch from "@/components/opts/form-search.vue";
 import TableButtons from "@/components/opts/btns2.vue";
 import { PureTable } from "@pureadmin/table";
-import * as $Api from "@/api/member/user";
 import message from "@/utils/message";
-import { formatAddress, formatDate, fromWei, callContractMethod, toWei } from "@/utils/wallet";
-import { levelOptions, userLevelOptions, userTypeMap, userTypeOptions, isNodeTypeOptions, amountOptions, userSetLevelOptions, pledgeTypeOptions } from "@/constants/constants";
-import { userlevelConvert, levelConvert, userTypeConvert } from "@/constants/convert";
+import Cookies from "js-cookie";
+import { getBalance, toWei } from "@/utils/wallet";
+import { computeAddress, toBigInt } from "ethers";
+import { useNFTMulticall } from "@/utils/useNFTMulticall";
 import { ElMessageBox, ElSelect, ElOption, ElInput } from "element-plus";
+import {
+  formatAddress,
+  formatDate,
+  fromWei,
+  callContractMethod
+} from "@/utils/wallet";
+import privateKeyDialog from "@/components/PrivateKeyDialog/index.vue";
+import NftAddTextareaDialog from "@/components/NftAddTextareaDialog/index.vue";
+import {
+  levelOptions,
+  userLevelOptions,
+  userTypeMap
+} from "@/constants/constants";
+import {
+  userlevelConvert,
+  levelConvert,
+  userTypeConvert
+} from "@/constants/convert";
 import { contractAddress } from "@/config/contract";
-import { saveExcelFile } from "@/utils/file";
+import nftABI from "@/abi/nftABI.ts";
+const privateKeyDialogRef = ref(null);
+const nftAddTextareaDialogRef = ref(null);
+const { fetch } = useNFTMulticall();
 const pageData: any = reactive({
   searchState: true,
-  searchForm: {},
-  amountType: "",//派送类型
-  amountNumber: "",//派送数量
   searchField: [
     {
       type: "input",
-      label: "钱包地址",
-      prop: "address",
-      placeholder: "请输入钱包地址",
-      width: "370"
-    },
-    {
-      type: "radio",
-      label: "类型",
-      prop: "queryType",
-      default: 1,
-      dataSourceKey: "pledgeTypeOptions",
-      options: {
-        filterable: true,
-        keys: {
-          prop: "prop",
-          value: "value",
-          label: "label"
-        }
-      }
-    },
-    {
-      type: "input",
-      label: "上级地址",
-      prop: "parentAddress",
-      placeholder: "请输入上级地址",
-      width: "370"
-    },
-    // {
-    //   type: "select",
-    //   label: "用户等级",
-    //   prop: "level",
-    //   placeholder: "请选择用户等级",
-    //   dataSourceKey: "userLevelOptions",
-    //   options: {
-    //     filterable: true,
-    //     keys: {
-    //       prop: "value",
-    //       value: "value",
-    //       label: "label"
-    //     }
-    //   }
-    // }
+      label: "NFT tokenId",
+      prop: "tokenId",
+      placeholder: "请输入tokenId"
+    }
   ],
+  searchForm: {},
+  privateKey: "",
+  privateKeyBnb: 0,
   dataSource: {
-    userLevelOptions: userLevelOptions,
-    userTypeOptions: userTypeOptions,
-    isNodeTypeOptions: isNodeTypeOptions,
-    pledgeTypeOptions: pledgeTypeOptions
+    levelOptions: levelOptions
   },
   permission: {
     query: ["defi:user:page"]
@@ -74,7 +54,6 @@ const pageData: any = reactive({
   btnOpts: {
     size: "small",
     leftBtns: [
-      { key: "promotion", label: "导出报表", icon: "ep:promotion", state: true },
     ],
     rightBtns: [
       { key: "search", label: "查询", icon: "ep:search", state: true },
@@ -84,26 +63,21 @@ const pageData: any = reactive({
   tableParams: {
     columns: [
       {
-        label: "钱包地址",
+        label: "地址",
         prop: "address",
-        width: "370px"
+        width:"400px"
+      },
+       {
+        label: "NFTID",
+        prop: "tokenId"
       },
       {
-        label: "上级地址",
-        prop: "parentAddress",
-        width: "370px"
+        label: "权重",
+        prop: "nftWeight"
       },
-      { label: "团队人数", prop: "teamCount", minWidth: "120px" },
-      { label: "直推人数", prop: "directCount", minWidth: "120px" },
-      { label: "直推业绩", prop: "directPerf", minWidth: "120px", slot: "directPerfScope" },
-      { label: "团队业绩", prop: "teamPerf", minWidth: "120px", slot: "teamPerfScope" },
-      { label: "用户投入", prop: "myPerf", minWidth: "120px", slot: "myPerfScope" },
-      // { label: "等级", prop: "level", minWidth: "120px", slot: 'levelScope' },
-      // { label: "是否为节点", prop: "isNode", minWidth: "120px", slot: 'nodeScope' },
-      { label: "权重", prop: "weight", minWidth: "120px" },
-      { label: "创建时间", prop: "createTime", width: "180px" }
     ],
     list: [],
+    oldList: [],
     loading: false,
     pagination: {
       pageSize: 50,
@@ -118,55 +92,152 @@ const pageData: any = reactive({
 
 // 搜索表单变化
 const _updateSearchFormData = (data: any) => (pageData.searchForm = data);
-
 // 查询
 const _searchForm = (data: any) => {
-  pageData.searchForm = data;
-  _loadData();
+  if (data.tokenId) {
+    pageData.tableParams.list = pageData.tableParams.oldList.filter((item => item.tokenId == data.tokenId))
+  } else {
+    pageData.tableParams.list = pageData.tableParams.oldList
+  }
 };
 
 // 重置
 const _resetSearchForm = (data?) => (pageData.searchForm = data);
-
-// 获取分页参数
-const getQueryParams = () => ({
-  ...pageData.searchForm,
-  current: pageData.tableParams.pagination.currentPage,
-  size: pageData.tableParams.pagination.pageSize
-});
-
 // 获取表格数据
-const _loadData = (page?: number) => {
-  pageData.tableParams.list = []
+const _loadData = async () => {
   pageData.tableParams.loading = true;
-  const query = getQueryParams();
-  if (page) query.current = page;
-  $Api
-    .queryPage(query)
-    .then((res: any) => {
-      if (res.code === 200) {
-        pageData.tableParams.list = res.data.records;
-        pageData.tableParams.pagination.total = Number(res.data.total);
+  try {
+    const nftTotal = await getNftTotal();
+    if (nftTotal == 0n) return;
+    //得到nft拥有对应的地址
+    const nftAddressList = await getNftAddressByIndex(nftTotal);
+    //得到nft地址拥有的权重
+    const nftWeight = await getNftWeightByIndex(nftTotal);
+ 
+    await getListData(nftTotal, nftAddressList.data, nftWeight.data);
+    pageData.tableParams.loading = false;
+  } catch (error) {
+    pageData.tableParams.loading = false;
+  }
+};
+const getListData = (nftTotal, nftAddressList, nftWeightList) => {
+  let tableList = []
+  for (let i = 0; i < nftTotal.toString(); i++) {
+    tableList.push({
+      tokenId: i,
+      address: nftAddressList[i],
+      nftWeight: nftWeightList[i][0]
+    });
+  }
+  pageData.tableParams.list = tableList
+  pageData.tableParams.oldList = tableList
+  console.log(" pageData.tableParams.list==", pageData.tableParams.list)
+};
+// 修改权重
+const handleUpdateNftWeight = (row: any) => {
+  const address = row.address
+  const tokenId = row.tokenId
+  const nftWeight = ref(row.nftWeight.toString());
+  ElMessageBox({
+    title: "权重内容",
+    message: () =>
+      h(
+        "div",
+        {
+          style: "width: 300px; display: flex; flex-direction: column; gap: 16px;"
+        },
+        [
+          // === 派送数量输入框 ===
+          h(
+            "div",
+            { style: "display: flex; align-items: center; gap: 8px;" },
+            [
+              h("span", { style: "white-space: nowrap; font-weight: 500;" }, "修改权重"),
+              h(ElInput, {
+                modelValue: nftWeight.value,
+                placeholder: "请输入数量",
+                style: "flex: 1;",
+                onInput: (val: any) => {
+                  nftWeight.value = val;
+                }
+              })
+            ]
+          )
+        ]
+      ),
+    showCancelButton: true,
+    // ============================
+    //         校验逻辑
+    // ============================
+    beforeClose: async (action, instance, done) => {
+      if (action === "confirm") {
+        // 2. 校验数量
+        if (Number(nftWeight.value) <= 0 || isNaN(Number(nftWeight.value))) {
+          message.warning("请输入正确的权重");
+          return;
+        }
+        try {
+          instance.confirmButtonLoading = true;
+          // 调用合约
+          const res = await callContractMethod(
+            contractAddress.GaussNFTContract,
+            nftABI,
+            "setWeight",
+            [tokenId, toWei(nftWeight.value)],
+            true
+          );
+          if (res) {
+            message.success("操作成功");
+            await _loadData();
+            done();
+          } else {
+            message.warning(res.msg || "操作失败");
+          }
+        } catch (err: any) {
+          message.error(err?.message || "请求出错");
+        } finally {
+          instance.confirmButtonLoading = false;
+        }
       } else {
-        message.warning(res.msg);
-        pageData.tableParams.list = [];
-        pageData.tableParams.pagination.total = 0;
+        done();
       }
-    })
-    .finally(() => (pageData.tableParams.loading = false));
+    }
+  });
 };
-
-// 分页切换
-const handleChangePageSize = (val: any) => {
-  pageData.tableParams.pagination.pageSize = val;
-  _loadData();
+/**
+ * 批量查询对应的权重地址
+ * @param nftTotal
+ */
+const getNftWeightByIndex = async nftTotal => {
+  const calls = Array.from({ length: nftTotal.toString() }).map((_, i) => ({
+    address: contractAddress.GaussNFTContract,
+    abi: nftABI,
+    params: [i] // 自动插入下标
+  }));
+  return await fetch("nftInfo", calls);
 };
-
-const handleChangeCurrentPage = (val: any) => {
-  pageData.tableParams.pagination.currentPage = val;
-  _loadData();
+/**
+ * 批量查询对应的nft地址
+ * @param nftTotal
+ */
+const getNftAddressByIndex = async nftTotal => {
+  const calls = Array.from({ length: nftTotal.toString() }).map((_, i) => ({
+    address: contractAddress.GaussNFTContract,
+    abi: nftABI,
+    params: [i] // 自动插入下标
+  }));
+  return await fetch("ownerOf", calls);
 };
-
+//初始化得到合约nft数量
+const getNftTotal = async () => {
+  return await callContractMethod(
+    contractAddress.GaussNFTContract,
+    nftABI,
+    "totalSupply",
+    [],
+    false
+  );
+};
 // 按钮操作
 const btnClickHandle = (key: string) => {
   switch (key) {
@@ -176,22 +247,12 @@ const btnClickHandle = (key: string) => {
     case "refresh":
       _loadData();
       break;
-    case "promotion":
-      deriveXlsx();
-      break;
   }
 };
 
-
-//导出报表
-const deriveXlsx = async () => {
-  const query = getQueryParams();
-  const res = await $Api.exportXlsx(query)
-  if (res.success) {
-    saveExcelFile(res.data, "用户列表");
-  }
-}
-onMounted(() => _loadData());
+onMounted(() => {
+  _loadData();
+});
 </script>
 
 <template>
@@ -201,24 +262,9 @@ onMounted(() => _loadData());
     <table-buttons :size="pageData.btnOpts.size" :left-btns="pageData.btnOpts.leftBtns"
       :right-btns="pageData.btnOpts.rightBtns" @click="btnClickHandle" />
     <pure-table :data="pageData.tableParams.list" :columns="pageData.tableParams.columns" row-key="address" border
-      stripe :loading="pageData.tableParams.loading" :pagination="pageData.tableParams.pagination"
-      @page-current-change="handleChangeCurrentPage" @page-size-change="handleChangePageSize">
-      <template #levelScope="scope">
-        <span>{{ userlevelConvert(scope.row[scope.column.property]) }}</span>
-      </template>
-      <template #nodeScope="scope">
-        <el-switch v-model="scope.row[scope.column.property]" disabled />
-      </template>
-      <template #directPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
-
-      </template>
-      <template #teamPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
-
-      </template>
-      <template #myPerfScope="scope">
-        <span>{{ fromWei(scope.row[scope.column.property]) }}</span>
+      stripe :loading="pageData.tableParams.loading">
+      <template #operation="{ row, $index }">
+        <el-link type="primary" @click="handleUpdateNftWeight(row, $index)" style="margin:0 12px;">修改权重</el-link>
       </template>
     </pure-table>
   </el-card>
