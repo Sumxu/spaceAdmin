@@ -27,10 +27,14 @@ export const MenuTypeMap: SelectOptionMap<string> = {
   1: "菜单",
   2: "权限"
 };
-export const nodeTypeMap:SelectOptionMap<string> = {
+export const nodeTypeMap: SelectOptionMap<string> = {
   1: "太空",
   2: "生态"
 };
+export const nodeTypeOptions: SelectOption<number>[] = [
+  { label: "太空", value: 1 },
+  { label: "生态", value: 2 }
+];
 /**
  * 状态
  */
@@ -212,6 +216,11 @@ export const pledgeTypeOptions: SelectOption<number>[] = [
   { label: "查个人", value: 1 },
   { label: "查伞下", value: 2 }
 ];
+export const payNftTypeOptions: SelectOption<number>[] = [
+  { label: "USDT", value: 0 },
+  { label: "FC+USDT", value: 1 },
+  { label: "IFAI+USDT", value: 2 },
+];
 export const userlevelMap: SelectOptionMap<string> = {
   0: "无",
   1: "F1",
@@ -245,7 +254,6 @@ export const userTypeMap: SelectOptionMap<string> = {
   3: "臻品区",
   4: "兑换区"
 };
-
 export const pledgeMap: SelectOptionMap<string> = {
   0: "正常",
   1: "结束"
@@ -278,10 +286,11 @@ export const orderMap: SelectOptionMap<string> = {
   3: "已完成"
 };
 export const payTypeMap: SelectOptionMap<string> = {
-  1: "USDT",
-  2: "USD",
-  3: "TUSD"
+  0: "USDT",
+  1: "FC+USDT",
+  2: "IFAI+USDT"
 };
+
 export const classifyMap: SelectOptionMap<string> = {
   0: "请选择",
   1: "安品区",

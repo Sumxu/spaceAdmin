@@ -228,8 +228,6 @@ const btnClickHandle = (key: string) => {
       break;
   }
 };
-
-
 //导出报表
 const deriveXlsx = async () => {
   const query = getQueryParams();
